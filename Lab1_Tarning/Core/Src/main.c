@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -148,32 +149,28 @@ const uint8_t sseg[10] =
 		0x7D, //6
 		0x07, //7
 		0x7F, //8
-		0x6F //9
+		0x6F  //9
 	};
 
 const uint8_t sseg_err = 0xDC;
 
+
 void put_on_sseg(uint8_t dec_nbr)
 {
-	uint8_t pattern;
-	if (dec_nbr <= 9)
-	{
-		pattern = sseg[dec_nbr];
-	}
-	else
-	{
-		pattern = sseg_err;
-	}
+    uint8_t pattern;
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, (pattern & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);  // A
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, (pattern & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);  // B
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, (pattern & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET); // C
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, (pattern & 0x08) ? GPIO_PIN_SET : GPIO_PIN_RESET); // D
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, (pattern & 0x10) ? GPIO_PIN_SET : GPIO_PIN_RESET); // E
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, (pattern & 0x20) ? GPIO_PIN_SET : GPIO_PIN_RESET); // F
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (pattern & 0x40) ? GPIO_PIN_SET : GPIO_PIN_RESET); // G
+    // Kontrollera om indatan är giltig (0–9), annars använd felmönster
+    if (dec_nbr <= 9) {
+        pattern = sseg[dec_nbr]; // Hämta mönstret från arrayen
+    } else {
+        pattern = sseg_err;      // Använd felmönstret vid ogiltig indata
+    }
+
+    pattern = ~pattern;
+
+    // Skriv ut mönstret till sjusegmentsdisplayen genom att direkt sätta GPIO-registret
+    GPIOC->ODR = (GPIOC->ODR & 0xFF00) | (pattern & 0xFF);
 }
-
 
 
 /* USER CODE END 0 */
@@ -218,35 +215,48 @@ int main(void)
   uint8_t die_value = 1; //1<= die_value <= 6
 
 
- for(uint8_t i = 0; i <= 9; i++)
-  	{
-  	put_on_sseg(i);
-  	HAL_Delay(333);
-  	}
+ //for(uint8_t i = 0; i <= 9; i++)
+ //	   {
+ // 	put_on_sseg(i);
+  //	HAL_Delay(333);
+  //	}
 
-  put_on_sseg(88); //should display the error pattern
+  //put_on_sseg(88); //should display the error pattern
+
 
   while (1)
   {
     /* USER CODE END WHILE */
-	  pressed = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
 
-	      if(pressed)
+	  pressed = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
+	  // Check if the button is pressed
+	      if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET)
 	      {
-	          // Öka tärningsvärdet och rulla runt om det går över 6
-	          die_value++;
-	          if (die_value > 6) {
-	              die_value = 1;
+	          // Button is pressed
+	    	  //Led2
+	    	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+
+	          if (!pressed) // Check if the button was not previously pressed
+	          {
+	              // Increase the dice value and wrap around if needed
+	              die_value++;
+	              if (die_value > 6) {
+	                  die_value = 1;
+	              }
+	              // Display the dice value
+	              put_die_dots(die_value);
+	              // Set the flag indicating that the dice value has been updated
+	              pressed = 1;
 	          }
-	          // Visa tärningsprickar
-	          put_die_dots(die_value);
-	          // Kort fördröjning
-	          HAL_Delay(1);
 	      }
 	      else
 	      {
-	          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+	          // Button is not pressed
+	          pressed = 0; // Reset the flag when the button is not pressed
 	      }
+	      put_on_sseg(die_value);
+
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
