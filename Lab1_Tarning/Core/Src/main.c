@@ -223,10 +223,46 @@ int main(void)
 
   //put_on_sseg(88); //should display the error pattern
 
+  uint32_t arr[10];
+  void test_endianness()
+  {
+  /*
+  Initialize the array. The compiler knows that we're dealing
+  with 32-bit numbers so if arr[i + 0] points to
+  address 0x3000 then arr[i + 1] will point to 0x3004
+  (and NOT to 0x3001).
+  */
+  for (int i = 0; i < 10; i += 2) // note: += 2
+  {
+  arr[i + 0] = 0xDEADBEEF;
+  arr[i + 1] = 0xCAFED00D;
+  }
+
+  uint16_t a = arr[0];
+  uint16_t b = arr[1];
+  uint16_t c = arr[2];
+  uint8_t x = arr[0];
+  uint8_t y = arr[1];
+  // You may THINK you’re 32 bits. I know better than you.
+  // Base pointers (arr, arr8) will point to same cell though.
+  uint8_t *arr8 = (uint8_t *) arr;
+  uint8_t p = arr8[0];
+  uint8_t q = arr8[1];
+  uint8_t r = arr8[2];
+  uint8_t s = arr8[3];
+  uint8_t t = arr8[4];
+
+  uint16_t babe = 0xBABE;
+  arr[0] = babe; // putting u16 in an u32 slot
+
+  return;
+  }
+  test_endianness();
 
   while (1)
   {
     /* USER CODE END WHILE */
+
 
 	  pressed = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
 	  // Check if the button is pressed
