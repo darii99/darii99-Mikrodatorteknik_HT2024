@@ -50,6 +50,7 @@ UART_HandleTypeDef huart2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -90,7 +91,7 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_car_go:
-            // Tänd grönt ljus för bilar, släck andra bil-lampor, tänd röd gång-lampa
+
             GPIOB->ODR &= ~(1 << 15); // Släck CarRed
             GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
             GPIOB->ODR |= (1 << 13);  // Tänd CarGreen
@@ -99,7 +100,7 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_pushed_wait:
-            // Tänd gul bil-lampa för väntan, tänd röd gång-lampa
+
             GPIOB->ODR &= ~(1 << 15); // Släck CarRed
             GPIOB->ODR |= (1 << 14);  // Tänd CarYellow
             GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
@@ -108,7 +109,7 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_cars_stopping:
-            // Tänd röd ljus för bilar, tänd röd gång-lampa
+
             GPIOB->ODR |= (1 << 15);  // Tänd CarRed
             GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
             GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
@@ -117,7 +118,7 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_walk_go:
-            // Tänd grönt ljus för gångtrafikanter, släck alla bil-lampor
+
             GPIOB->ODR &= ~(1 << 15); // Släck CarRed
             GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
             GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
@@ -126,7 +127,7 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_walk_wait:
-            // Tänd rött ljus för gångtrafikanter, bilar väntar
+
             GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
             GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
 
@@ -136,8 +137,8 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_car_ready:
-            // Bilar förbereder sig att starta (gul lampa för bilar), gångtrafikant rött
-            GPIOB->ODR &= ~(1 << 15); // Släck CarRed
+
+            GPIOB->ODR |= (1 << 15); // Tänd CarRed
             GPIOB->ODR |= (1 << 14);  // Tänd CarYellow
             GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
             GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
@@ -145,7 +146,7 @@ void set_traffic_lights(enum state s)
             break;
 
         case s_car_start:
-            // Bilar börjar köra (grönt ljus för bilar), gångtrafikant rött
+
             GPIOB->ODR &= ~(1 << 15); // Släck CarRed
             GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
             GPIOB->ODR |= (1 << 13);  // Tänd CarGreen
@@ -153,10 +154,56 @@ void set_traffic_lights(enum state s)
             GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
             break;
 
-        //default:
-            // Fallback för okänt tillstånd
-            //break;
+        default:
+
+            break;
     }
+}
+
+int is_button_pressed()
+{
+	static int last_press = 0;  // Variabel som håller reda på tidigare knappstatus
+	    int curr_press;
+
+	    // Läs knappens aktuella tillstånd
+	    uint32_t reg_reading = GPIOC->IDR;
+	    curr_press = (reg_reading & (1 << 13)) ? 1 : 0;  // Läs bit 13 (knappen)
+
+	    // Kontrollera om det har varit en positiv flank
+	    if (curr_press == 1 && last_press == 0)
+	    {
+	        last_press = curr_press;  // Uppdatera tidigare knappstatus
+	        return 1;  // Positiv flank (knapptryckning upptäckt)
+	    }
+
+	    // Uppdatera tidigare knappstatus
+	    last_press = curr_press;
+
+	    return 0;  // Ingen positiv flank
+
+}
+
+void update_tick(uint32_t* last_tick, int* ticks_left_in_state, int* timeout_handled)
+{
+    uint32_t curr_tick = HAL_GetTick(); // Hämta nuvarande tick-värde
+
+    // Kontrollera om ett nytt tick har gått (1 millisekund)
+    if (curr_tick > *last_tick)
+        {
+            *last_tick = curr_tick;  // Uppdatera senast lästa tick
+
+            // Minska ticks_left_in_state om det är större än 0
+            if (*ticks_left_in_state > 0)
+            {
+                *ticks_left_in_state--;
+
+                // Kontrollera om tiden har nått 0 och om det inte redan är hanterat
+                if (*ticks_left_in_state == 0 && !*timeout_handled)
+                {
+                    *timeout_handled = 1;  // Sätt flagga för att undvika dubbelhantering
+                }
+            }
+        }
 }
 /* USER CODE END 0 */
 
@@ -190,8 +237,19 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  /* USER CODE BEGIN 2 */
 
+
+  uint32_t last_tick = 0;            // Håller koll på senaste tick från HAL_GetTick()
+  int ticks_left_in_state = 0;       // Hur många ticks som är kvar innan timeout
+  int timeout_handled = 0;           // Flagga för att säkerställa att ev_state_timeout bara genereras en gång
+
+  /* USER CODE BEGIN 2 */
+  enum state st = s_init;
+  enum state next_st = st;  // Variabel för nästa tillstånd
+  enum event ev = ev_none;
+
+  int curr_press = is_button_pressed();
+  int last_press = curr_press;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -199,7 +257,121 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  ev = ev_none;
 
+	  update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
+
+   // Kolla efter knapptryckning (positiv flank)
+	  if (is_button_pressed() && st == s_car_go)
+	  {
+		ev = ev_button_push;
+	  }
+	  else if (timeout_handled)
+	          {
+	              ev = ev_state_timeout;
+	              timeout_handled = 0; // Återställ timeout_handled efter att ha hanterat eventet
+	          }
+	  else
+	  {
+		  ev = ev_none;
+	  }
+
+
+	  switch(st)
+	      {
+	          case s_init:
+	              // Alla lampor tända (111 11)
+	              set_traffic_lights(s_init);  // Tänder alla lampor
+
+	              if (ev == ev_button_push) {
+	            	  next_st = s_walk_go;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 2000;
+	                  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_car_go:
+	              if (ev == ev_button_push) {
+	            	  next_st = s_pushed_wait;
+	                  set_traffic_lights(st);
+	                  //ticks_left_in_state = 10000;
+					  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_pushed_wait:
+	              if (ev == ev_state_timeout) {
+	            	  next_st = s_cars_stopping;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 2000;
+	                  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_cars_stopping:
+	              if (ev == ev_state_timeout) {
+	            	  next_st = s_walk_go;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 1000;
+					  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_walk_go:
+	              if (ev == ev_state_timeout) {
+	            	  next_st = s_walk_wait;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 3000;
+	                  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_walk_wait:
+	              if (ev == ev_state_timeout) {
+	            	  next_st = s_car_ready;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 1000;
+					  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_car_ready:
+	              if (ev == ev_state_timeout) {
+	            	  next_st = s_car_start;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 1000;
+					  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          case s_car_start:
+	              if (ev == ev_state_timeout) {
+	            	  next_st = s_car_go;
+	                  set_traffic_lights(st);
+	                  ticks_left_in_state = 1000;
+					  timeout_handled = 0;
+
+	              }
+	              break;
+
+	          default:
+	              // Fallback tillstånd
+	              break;
+	      }
+
+	  // Om tillståndet har ändrats, uppdatera och sätt ljusen
+		  if (next_st != st) {
+			  st = next_st;
+			  set_traffic_lights(st);
+	          }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
