@@ -86,75 +86,76 @@ void set_traffic_lights(enum state s)
     {
         case s_init:
             // Sätt alla lampor på
-            GPIOB->ODR |= (1 << 15); // Tänd CarRed
-            GPIOB->ODR |= (1 << 14); // Tänd CarYellow
-            GPIOB->ODR |= (1 << 13); // Tänd CarGreen
-            GPIOA->ODR |= (1 << 12); // Tänd WalkRed
-            GPIOA->ODR |= (1 << 11); // Tänd WalkGreen
+
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_SET);
+
             break;
 
         case s_car_go:
-
-            GPIOB->ODR &= ~(1 << 15); // Släck CarRed
-            GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
-            GPIOB->ODR |= (1 << 13);  // Tänd CarGreen
-            GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
-            GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
+        	//001 10
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
             break;
 
         case s_pushed_wait:
-
-            GPIOB->ODR &= ~(1 << 15); // Släck CarRed
-            GPIOB->ODR |= (1 << 14);  // Tänd CarYellow
-            GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
-            GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
-            GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
+        	//010 10
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
             break;
 
         case s_cars_stopping:
-
-            GPIOB->ODR |= (1 << 15);  // Tänd CarRed
-            GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
-            GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
-            GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
-            GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
+        	//100 10
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
             break;
 
         case s_walk_go:
-
-            GPIOB->ODR &= ~(1 << 15); // Släck CarRed
-            GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
-            GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
-            GPIOA->ODR &= ~(1 << 12); // Släck WalkRed
-            GPIOA->ODR |= (1 << 11);  // Tänd WalkGreen
+        	//100 01
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_SET);
             break;
 
         case s_walk_wait:
-
-            GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
-            GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
-
-            GPIOB->ODR &= ~(1 << 15); // Släck CarRed
-			GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
-			GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
+        	//100 10
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
             break;
 
         case s_car_ready:
-
-            GPIOB->ODR |= (1 << 15); // Tänd CarRed
-            GPIOB->ODR |= (1 << 14);  // Tänd CarYellow
-            GPIOB->ODR &= ~(1 << 13); // Släck CarGreen
-            GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
-            GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
+        	//110 10
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
             break;
 
         case s_car_start:
-
-            GPIOB->ODR &= ~(1 << 15); // Släck CarRed
-            GPIOB->ODR &= ~(1 << 14); // Släck CarYellow
-            GPIOB->ODR |= (1 << 13);  // Tänd CarGreen
-            GPIOA->ODR |= (1 << 12);  // Tänd WalkRed
-            GPIOA->ODR &= ~(1 << 11); // Släck WalkGreen
+        	//001 10
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, GPIO_PIN_RESET);
             break;
 
         default:
@@ -165,27 +166,14 @@ void set_traffic_lights(enum state s)
 
 int is_button_pressed()
 {
-	static int last_press = 0;  // Variabel som håller reda på tidigare knappstatus
-	    int curr_press;
-
-	    // Läs knappens aktuella tillstånd
-	    uint32_t reg_reading = GPIOC->IDR;
-	    curr_press = (reg_reading & (1 << 13)) ? 1 : 0;  // Läs bit 13 (knappen)
-
-	    // Kontrollera om det har varit en positiv flank
-	    if (curr_press == 1 && last_press == 0)
-	    {
-	        last_press = curr_press;  // Uppdatera tidigare knappstatus
-	        return 1;  // Positiv flank (knapptryckning upptäckt)
-	    }
-
-	    // Uppdatera tidigare knappstatus
-	    last_press = curr_press;
-
-	    return 0;  // Ingen positiv flank
-
+    uint32_t reg_reading = GPIOC->IDR;
+    if((reg_reading & 1 << 13) == 0)
+        return 1;
+    else
+        return 0;
 }
 
+/*
 void update_tick(uint32_t* last_tick, int* ticks_left_in_state, int* timeout_handled)
 {
     uint32_t curr_tick = HAL_GetTick(); // Hämta nuvarande tick-värde
@@ -193,28 +181,65 @@ void update_tick(uint32_t* last_tick, int* ticks_left_in_state, int* timeout_han
     // Kontrollera om ett nytt tick har gått (1 millisekund)
     if (curr_tick > *last_tick)
         {
-            *last_tick = curr_tick;  // Uppdatera senast lästa tick
+            (*last_tick) = curr_tick;  // Uppdatera senast lästa tick
 
             // Minska ticks_left_in_state om det är större än 0
-            if (*ticks_left_in_state > 0)
+            if ((*ticks_left_in_state) > 0)
             {
-                *ticks_left_in_state--;
+                (*ticks_left_in_state)--;
 
                 // Kontrollera om tiden har nått 0 och om det inte redan är hanterat
-                if (*ticks_left_in_state == 0 && !*timeout_handled)
+                if ((*ticks_left_in_state) == 0 && !(*timeout_handled))
                 {
-                    *timeout_handled = 1;  // Sätt flagga för att undvika dubbelhantering
+                    (*timeout_handled) = 1;  // Sätt flagga för att undvika dubbelhantering
                 }
             }
         }
 }
+*/
+
+void update_tick(  uint32_t *last_tick, uint32_t *ticks_left_in_state, int *timeout_handled )
+{
+
+    if(*last_tick == 0){
+        *last_tick = HAL_GetTick();
+    }
+
+    uint32_t curr_tick = HAL_GetTick();
+
+    // Kontrollera om ett nytt tick har gått (1 millisekund)
+    if (curr_tick > *last_tick)
+    {
+        uint32_t delta = curr_tick - *last_tick;
+        *last_tick = curr_tick;  // Uppdatera senast lästa tick
+
+        // Minska ticks_left_in_state om det är större än 0
+        if (*ticks_left_in_state > 0)
+        {
+            if (*ticks_left_in_state > delta ){
+                *ticks_left_in_state = *ticks_left_in_state - delta;
+            }else{
+                *ticks_left_in_state = 0;
+            }
+
+
+            // Kontrollera om tiden har nått 0 och om det inte redan är hanterat
+            if (*ticks_left_in_state <= 0 && !(*timeout_handled))
+            {
+                *timeout_handled = 1;  // Sätt flagga för att undvika dubbelhantering
+            }
+        }
+    }
+
+}
+
 
 void push_button_light_on() {
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);  // Sätt PC0 hög (tänd diod)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);  // Sätt PC0 hög (tänd diod)
 }
 
 void push_button_light_off() {
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);  // Sätt PC0 låg (släck diod)
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);  // Sätt PC0 låg (släck diod)
 }
 /* USER CODE END 0 */
 
@@ -251,11 +276,19 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   enum state st = s_init;
-  enum state next_st = st;  // Variabel för nästa tillstånd
+  //enum state next_st = st;  // Variabel för nästa tillstånd
   enum event ev = ev_none;
 
   int curr_press = is_button_pressed();
   int last_press = curr_press;
+  uint32_t HAL_GetTick( void );
+
+  uint32_t last_tick = 0;           	 // Håller koll på senaste tick från HAL_GetTick()
+  uint32_t ticks_left_in_state = 1000;       // Hur många ticks som är kvar innan timeout
+  int timeout_handled = 0;           	// Flagga för att säkerställa att ev_state_timeout bara genereras en gång
+  //uint32_t curr_tick;
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -265,44 +298,53 @@ int main(void)
       /* USER CODE END WHILE */
 
   	      /* USER CODE END WHILE */
-  		  uint32_t last_tick = 0;            // Håller koll på senaste tick från HAL_GetTick()
-  		  int ticks_left_in_state = 0;       // Hur många ticks som är kvar innan timeout
-  		  int timeout_handled = 0;           // Flagga för att säkerställa att ev_state_timeout bara genereras en gång
-
-  	  	  ev = ev_none;
-  	  	  abuzz_start();
+  	  	  //abuzz_start();
+	  	  /*curr_tick = HAL_GetTick();
+	  	  if (curr_tick != last_tick) {
+	  		  ticks_left_in_state--;
+	  	  }*/
 
   	     // Kolla efter knapptryckning (positiv flank)
-  	  	  if (is_button_pressed())
+  	  	  if (is_button_pressed()&& (st == s_init || st == s_car_go))
   	  	  {
   	  		ev = ev_button_push;
   	  	  }
 
-  	  	  update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
 
-  	  	  if (ticks_left_in_state == 0 && timeout_handled)
+  	  	 /* update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
+
+  	  	* if (ticks_left_in_state == 0 && timeout_handled)
   	  	  {
   	  		ev = ev_state_timeout;
   	  		timeout_handled = 0;  // Återställ flaggan efter att eventet har genererats
+
   	  	  }
+  	  	  */
+
+
+
+
 
 
   	  	  switch(st)
   	  	      {
   	  	          case s_init:
   	  	              // Alla lampor tända (111 11)
-  	  	              set_traffic_lights(0b11111);  // Tänder alla lampor
+  	  	              set_traffic_lights(s_init);  // Tänder alla lampor
 
   	  	              if (ev == ev_button_push) {
-  	  	                  st = s_walk_go;
+  	  	            	  ev = ev_none;
+  	  	            	  st = s_walk_wait;
   	  	                  set_traffic_lights(st);
+  	  	                  ticks_left_in_state = 1000;
 
   	  	              }
   	  	              break;
 
   	  	          case s_car_go:
   	  	              if (ev == ev_button_push) {
-  	  	                  st = s_pushed_wait;
+  	  	            	  ev = ev_none;
+  	  	            	  st = s_pushed_wait;
   	  	                  set_traffic_lights(st);
 
   	  	              }
@@ -310,48 +352,59 @@ int main(void)
 
   	  	          case s_pushed_wait:
   	  	              if (ev == ev_state_timeout) {
-  	  	                  st = s_cars_stopping;
+  	  	            	  push_button_light_on();
+  	  	            	  ev = ev_none;
+  	  	            	  st = s_cars_stopping;
   	  	                  set_traffic_lights(st);
-
+  	  	                  ticks_left_in_state = 2000;
   	  	              }
   	  	              break;
 
   	  	          case s_cars_stopping:
   	  	              if (ev == ev_state_timeout) {
+  	  	            	  ev = ev_none;
   	  	                  st = s_walk_go;
   	  	                  set_traffic_lights(st);
-
+  	  	                  ticks_left_in_state = 2000;
   	  	              }
   	  	              break;
 
   	  	          case s_walk_go:
   	  	              if (ev == ev_state_timeout) {
+  	  	            	  ev = ev_none;
   	  	                  st = s_walk_wait;
   	  	                  set_traffic_lights(st);
-
+  	  	                  push_button_light_off();
+  	  	                  ticks_left_in_state = 3000;
   	  	              }
   	  	              break;
 
   	  	          case s_walk_wait:
   	  	              if (ev == ev_state_timeout) {
+  	  	            	  ev = ev_none;
   	  	                  st = s_car_ready;
   	  	                  set_traffic_lights(st);
+  	  	                  //HAL_Delay(1000);
+  	  	                  ticks_left_in_state = 2000;
 
   	  	              }
   	  	              break;
 
   	  	          case s_car_ready:
   	  	              if (ev == ev_state_timeout) {
+  	  	            	  ev = ev_none;
   	  	                  st = s_car_start;
   	  	                  set_traffic_lights(st);
-
+  	  	                  ticks_left_in_state = 1000;
   	  	              }
   	  	              break;
 
   	  	          case s_car_start:
   	  	              if (ev == ev_state_timeout) {
+  	  	            	  ev = ev_none;
   	  	                  st = s_car_go;
   	  	                  set_traffic_lights(st);
+  	  	                  ticks_left_in_state = 2000;
 
   	  	              }
   	  	              break;
@@ -360,6 +413,17 @@ int main(void)
   	  	              // Fallback tillstånd
   	  	              break;
   	  	      }
+
+  	  	update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
+
+		  if(timeout_handled == 1 && (st != s_init || st == s_car_go))
+		  {
+			ev = ev_state_timeout;
+			timeout_handled = 0;
+		  }else{
+			ev = ev_none;
+		  }
+
 
       /* USER CODE BEGIN 3 */
     }
