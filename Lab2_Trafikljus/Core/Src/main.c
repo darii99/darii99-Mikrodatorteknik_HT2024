@@ -379,6 +379,7 @@ int main(void)
   	  	            	  ev = ev_none;
   	  	                  st = s_walk_go;
   	  	                  set_traffic_lights(st);
+  	  	                  push_button_light_off();
   	  	                  last_tick = HAL_GetTick();
   	  	                  ticks_left_in_state = 3000;
   	  	              }
@@ -390,7 +391,6 @@ int main(void)
   	  	            	  ev = ev_none;
   	  	                  st = s_walk_wait;
   	  	                  set_traffic_lights(st);
-  	  	                  push_button_light_off();
   	  	                  last_tick = HAL_GetTick();
   	  	                  ticks_left_in_state = 3000;
   	  	              }
