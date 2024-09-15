@@ -354,10 +354,11 @@ int main(void)
   	  	              if (ev == ev_button_push) {
   	  	            	  ev = ev_none;
   	  	            	  st = s_pushed_wait;
+  	  	            	  ticks_left_in_state = 3000;
   	  	                  set_traffic_lights(st);
   	  	                  push_button_light_on();
   	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 2000;
+  	  	                  ticks_left_in_state = 3000;
   	  	              }
   	  	              break;
 
@@ -403,7 +404,7 @@ int main(void)
   	  	                  set_traffic_lights(st);
   	  	                  //HAL_Delay(1000);
   	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 3000;
+  	  	                  ticks_left_in_state = 2000;
   	  	              }
   	  	              break;
 
