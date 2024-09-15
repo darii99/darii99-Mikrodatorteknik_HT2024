@@ -201,8 +201,10 @@ void update_tick(uint32_t* last_tick, int* ticks_left_in_state, int* timeout_han
 void update_tick(  uint32_t *last_tick, uint32_t *ticks_left_in_state, int *timeout_handled )
 {
 
+
     if(*last_tick == 0){
         *last_tick = HAL_GetTick();
+
     }
 
     uint32_t curr_tick = HAL_GetTick();
@@ -211,6 +213,8 @@ void update_tick(  uint32_t *last_tick, uint32_t *ticks_left_in_state, int *time
     if (curr_tick > *last_tick)
     {
         uint32_t delta = curr_tick - *last_tick;
+
+
         *last_tick = curr_tick;  // Uppdatera senast lästa tick
 
         // Minska ticks_left_in_state om det är större än 0
@@ -284,10 +288,14 @@ int main(void)
   uint32_t HAL_GetTick( void );
 
   uint32_t last_tick = 0;           	 // Håller koll på senaste tick från HAL_GetTick()
-  uint32_t ticks_left_in_state = 1000;       // Hur många ticks som är kvar innan timeout
+  uint32_t ticks_left_in_state = 0;       // Hur många ticks som är kvar innan timeout
   int timeout_handled = 0;           	// Flagga för att säkerställa att ev_state_timeout bara genereras en gång
   //uint32_t curr_tick;
 
+  while (HAL_GetTick == 0) {
+	  printf("Waiting for HAL_GetTick to initalise");
+
+  };
 
   /* USER CODE END 2 */
 
@@ -334,76 +342,89 @@ int main(void)
 
   	  	              if (ev == ev_button_push) {
   	  	            	  ev = ev_none;
-  	  	            	  st = s_walk_wait;
+  	  	            	  st = s_cars_stopping;
   	  	                  set_traffic_lights(st);
-  	  	                  ticks_left_in_state = 1000;
-
+  	  	                  last_tick = HAL_GetTick();
+  	  	                  ticks_left_in_state = 3000;
   	  	              }
   	  	              break;
 
   	  	          case s_car_go:
+  	  	        	  //001 10
   	  	              if (ev == ev_button_push) {
   	  	            	  ev = ev_none;
   	  	            	  st = s_pushed_wait;
   	  	                  set_traffic_lights(st);
-
+  	  	                  push_button_light_on();
+  	  	                  last_tick = HAL_GetTick();
+  	  	                  ticks_left_in_state = 2000;
   	  	              }
   	  	              break;
 
   	  	          case s_pushed_wait:
+  	  	        	  //010 10
   	  	              if (ev == ev_state_timeout) {
-  	  	            	  push_button_light_on();
   	  	            	  ev = ev_none;
   	  	            	  st = s_cars_stopping;
   	  	                  set_traffic_lights(st);
+  	  	                  last_tick = HAL_GetTick();
   	  	                  ticks_left_in_state = 2000;
   	  	              }
   	  	              break;
 
   	  	          case s_cars_stopping:
+  	  	        	  //100 10
   	  	              if (ev == ev_state_timeout) {
   	  	            	  ev = ev_none;
   	  	                  st = s_walk_go;
   	  	                  set_traffic_lights(st);
-  	  	                  ticks_left_in_state = 2000;
+  	  	                  last_tick = HAL_GetTick();
+  	  	                  ticks_left_in_state = 3000;
   	  	              }
   	  	              break;
 
   	  	          case s_walk_go:
+  	  	        	  //100 01
   	  	              if (ev == ev_state_timeout) {
   	  	            	  ev = ev_none;
   	  	                  st = s_walk_wait;
   	  	                  set_traffic_lights(st);
   	  	                  push_button_light_off();
+  	  	                  last_tick = HAL_GetTick();
   	  	                  ticks_left_in_state = 3000;
   	  	              }
   	  	              break;
 
   	  	          case s_walk_wait:
+  	  	        	  //100 10
   	  	              if (ev == ev_state_timeout) {
   	  	            	  ev = ev_none;
   	  	                  st = s_car_ready;
   	  	                  set_traffic_lights(st);
   	  	                  //HAL_Delay(1000);
-  	  	                  ticks_left_in_state = 2000;
-
+  	  	                  last_tick = HAL_GetTick();
+  	  	                  ticks_left_in_state = 3000;
   	  	              }
   	  	              break;
 
   	  	          case s_car_ready:
+  	  	        	  //110 10
   	  	              if (ev == ev_state_timeout) {
   	  	            	  ev = ev_none;
   	  	                  st = s_car_start;
   	  	                  set_traffic_lights(st);
+  	  	                  last_tick = HAL_GetTick();
   	  	                  ticks_left_in_state = 1000;
   	  	              }
   	  	              break;
 
   	  	          case s_car_start:
+  	  	        	  //110 10
   	  	              if (ev == ev_state_timeout) {
   	  	            	  ev = ev_none;
   	  	                  st = s_car_go;
   	  	                  set_traffic_lights(st);
+  	  	                  last_tick = HAL_GetTick();
   	  	                  ticks_left_in_state = 2000;
 
   	  	              }
@@ -416,7 +437,7 @@ int main(void)
 
   	  	update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
 
-		  if(timeout_handled == 1 && (st != s_init || st == s_car_go))
+		  if(timeout_handled == 1 && (st != s_init && st != s_car_go))
 		  {
 			ev = ev_state_timeout;
 			timeout_handled = 0;
