@@ -54,8 +54,10 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM3_Init(void);
-/* USER CODE BEGIN PFP */
 
+/* USER CODE BEGIN PFP */
+int systick_count = 0;
+uint32_t ticks_left_in_state = 0;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -64,8 +66,17 @@ enum event
 {
 	ev_none = 0,
 	ev_button_push,
-	ev_state_timeout
+	ev_state_timeout,
+	ev_error = -99
 };
+
+#define EVQ_SIZE 10
+
+enum event evq[ EVQ_SIZE ];
+int evq_count 		= 0;
+int evq_front_ix	= 0;
+int evq_rear_ix 	= 0;
+
 
 
 enum state
@@ -79,6 +90,7 @@ enum state
 	s_car_ready,
 	s_car_start
 };
+
 
 void set_traffic_lights(enum state s)
 {
@@ -198,6 +210,46 @@ void update_tick(uint32_t* last_tick, int* ticks_left_in_state, int* timeout_han
 }
 */
 
+void evq_push_back(enum event e)
+{
+	//if queue is full, ignore e
+	if (evq_count < EVQ_SIZE){
+		evq[evq_rear_ix] = e;
+		evq_rear_ix++;
+		evq_rear_ix%= EVQ_SIZE;
+		evq_count++;
+	}
+}
+enum event evq_pop_front()
+{
+	enum event e = ev_none;
+	if (evq_count > 0)
+	{
+		e = evq[evq_front_ix];
+		evq[evq_front_ix] = ev_error;
+		evq_front_ix++;
+		evq_front_ix %= EVQ_SIZE;
+		evq_count--;
+	}
+	return e;
+}
+
+void my_systick_handler()
+{
+	systick_count++;
+	if (systick_count == 1000)
+	{
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		systick_count = 0;
+	}
+	if (ticks_left_in_state > 0) {
+		ticks_left_in_state--;
+		if(ticks_left_in_state == 0) {
+			evq_push_back(ev_state_timeout);
+		}
+	}
+}
+
 void update_tick(  uint32_t *last_tick, uint32_t *ticks_left_in_state, int *timeout_handled )
 {
 
@@ -237,6 +289,13 @@ void update_tick(  uint32_t *last_tick, uint32_t *ticks_left_in_state, int *time
 
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == B1_Pin)
+	{
+		evq_push_back(ev_button_push);
+	}
+}
 
 void push_button_light_on() {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);  // Sätt PC0 hög (tänd diod)
@@ -279,23 +338,20 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+
   enum state st = s_init;
   //enum state next_st = st;  // Variabel för nästa tillstånd
   enum event ev = ev_none;
 
+
   int curr_press = is_button_pressed();
   int last_press = curr_press;
-  uint32_t HAL_GetTick( void );
 
-  uint32_t last_tick = 0;           	 // Håller koll på senaste tick från HAL_GetTick()
-  uint32_t ticks_left_in_state = 0;       // Hur många ticks som är kvar innan timeout
-  int timeout_handled = 0;           	// Flagga för att säkerställa att ev_state_timeout bara genereras en gång
+//  uint32_t last_tick = 0;           	 // Håller koll på senaste tick från HAL_GetTick()
+//  uint32_t ticks_left_in_state = 0;       // Hur många ticks som är kvar innan timeout
+//  int timeout_handled = 0;           	// Flagga för att säkerställa att ev_state_timeout bara genereras en gång
   //uint32_t curr_tick;
-
-  while (HAL_GetTick == 0) {
-	  printf("Waiting for HAL_GetTick to initalise");
-
-  };
 
   /* USER CODE END 2 */
 
@@ -303,149 +359,154 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
     {
+
+	  	  //abuzz_start();
+  	  /*curr_tick = HAL_GetTick();
+  	  if (curr_tick != last_tick) {
+  		  ticks_left_in_state--;
+  	  }*/
+
+
+	 /*    // Kolla efter knapptryckning (positiv flank
+
+	  	  if (is_button_pressed()&& (st == s_init || st == s_car_go))
+	  	  {
+	  		ev = ev_button_push;
+	  	  }
+	 */
+	  curr_press = is_button_pressed();
+	  if(curr_press && !last_press)
+	  {
+		  evq_push_back(ev_button_push);
+	  }
+	  last_press = curr_press;
+
+	  	  ev = evq_pop_front();
+
+	  	 /* update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
+
+	  	* if (ticks_left_in_state == 0 && timeout_handled)
+	  	  {
+	  		ev = ev_state_timeout;
+	  		timeout_handled = 0;  // Återställ flaggan efter att eventet har genererats
+
+	  	  }
+	  	  */
+
+	  	  switch(st)
+	  	      {
+	  	          case s_init:
+	  	              // Alla lampor tända (111 11)
+	  	              set_traffic_lights(s_init);  // Tänder alla lampor
+
+	  	              if (ev == ev_button_push) {
+	  	            	  ev = ev_none;
+	  	            	  st = s_cars_stopping;
+	  	                  set_traffic_lights(st);
+	  	                  ticks_left_in_state = 2000;
+	  	              }
+	  	              break;
+
+	  	          case s_car_go:
+	  	        	  //001 10
+	  	              if (ev == ev_button_push) {
+	  	            	  ev = ev_none;
+	  	            	  st = s_pushed_wait;
+	  	                  set_traffic_lights(st);
+	  	                  push_button_light_on();
+
+	  	                  ticks_left_in_state = 2000;
+	  	              }
+	  	              break;
+
+	  	          case s_pushed_wait:
+	  	        	  //010 10
+	  	              if (ev == ev_state_timeout) {
+	  	            	  ev = ev_none;
+	  	            	  st = s_cars_stopping;
+	  	                  set_traffic_lights(st);
+
+	  	                  ticks_left_in_state = 2000;
+	  	              }
+	  	              break;
+
+	  	          case s_cars_stopping:
+	  	        	  //100 10
+	  	              if (ev == ev_state_timeout) {
+	  	            	  ev = ev_none;
+	  	                  st = s_walk_go;
+	  	                  set_traffic_lights(st);
+	  	                  push_button_light_off();
+
+	  	                  ticks_left_in_state = 3000;
+	  	              }
+	  	              break;
+
+	  	          case s_walk_go:
+	  	        	  //100 01
+	  	              if (ev == ev_state_timeout) {
+	  	            	  ev = ev_none;
+	  	                  st = s_walk_wait;
+	  	                  set_traffic_lights(st);
+
+	  	                  ticks_left_in_state = 2000;
+	  	              }
+	  	              break;
+
+	  	          case s_walk_wait:
+	  	        	  //100 10
+	  	              if (ev == ev_state_timeout) {
+	  	            	  ev = ev_none;
+	  	                  st = s_car_ready;
+	  	                  set_traffic_lights(st);
+
+	  	                  ticks_left_in_state = 2000;
+	  	              }
+	  	              break;
+
+	  	          case s_car_ready:
+	  	        	  //110 10
+	  	              if (ev == ev_state_timeout) {
+	  	            	  ev = ev_none;
+	  	                  st = s_car_start;
+	  	                  set_traffic_lights(st);
+
+	  	                  ticks_left_in_state = 1000;
+	  	              }
+	  	              break;
+
+	  	          case s_car_start:
+	  	        	  //110 10
+	  	              if (ev == ev_state_timeout) {
+	  	            	  ev = ev_none;
+	  	                  st = s_car_go;
+	  	                  set_traffic_lights(st);
+
+	  	                  ticks_left_in_state = 2000;
+
+	  	              }
+	  	              break;
+
+	  	          default:
+	  	              // Fallback tillstånd
+	  	              break;
+	  	      }
+
+	 /*
+	  	update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
+
+	  if(timeout_handled == 1 && (st != s_init && st != s_car_go))
+	  {
+		ev = ev_state_timeout;
+		timeout_handled = 0;
+	  }else{
+		ev = ev_none;
+	  }
+ */
+
+
+
       /* USER CODE END WHILE */
-
-  	      /* USER CODE END WHILE */
-  	  	  //abuzz_start();
-	  	  /*curr_tick = HAL_GetTick();
-	  	  if (curr_tick != last_tick) {
-	  		  ticks_left_in_state--;
-	  	  }*/
-
-  	     // Kolla efter knapptryckning (positiv flank)
-  	  	  if (is_button_pressed()&& (st == s_init || st == s_car_go))
-  	  	  {
-  	  		ev = ev_button_push;
-  	  	  }
-
-
-  	  	 /* update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
-
-  	  	* if (ticks_left_in_state == 0 && timeout_handled)
-  	  	  {
-  	  		ev = ev_state_timeout;
-  	  		timeout_handled = 0;  // Återställ flaggan efter att eventet har genererats
-
-  	  	  }
-  	  	  */
-
-
-
-
-
-
-  	  	  switch(st)
-  	  	      {
-  	  	          case s_init:
-  	  	              // Alla lampor tända (111 11)
-  	  	              set_traffic_lights(s_init);  // Tänder alla lampor
-
-  	  	              if (ev == ev_button_push) {
-  	  	            	  ev = ev_none;
-  	  	            	  st = s_cars_stopping;
-  	  	                  set_traffic_lights(st);
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 3000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_car_go:
-  	  	        	  //001 10
-  	  	              if (ev == ev_button_push) {
-  	  	            	  ev = ev_none;
-  	  	            	  st = s_pushed_wait;
-  	  	            	  ticks_left_in_state = 3000;
-  	  	                  set_traffic_lights(st);
-  	  	                  push_button_light_on();
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 3000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_pushed_wait:
-  	  	        	  //010 10
-  	  	              if (ev == ev_state_timeout) {
-  	  	            	  ev = ev_none;
-  	  	            	  st = s_cars_stopping;
-  	  	                  set_traffic_lights(st);
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 2000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_cars_stopping:
-  	  	        	  //100 10
-  	  	              if (ev == ev_state_timeout) {
-  	  	            	  ev = ev_none;
-  	  	                  st = s_walk_go;
-  	  	                  set_traffic_lights(st);
-  	  	                  push_button_light_off();
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 3000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_walk_go:
-  	  	        	  //100 01
-  	  	              if (ev == ev_state_timeout) {
-  	  	            	  ev = ev_none;
-  	  	                  st = s_walk_wait;
-  	  	                  set_traffic_lights(st);
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 3000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_walk_wait:
-  	  	        	  //100 10
-  	  	              if (ev == ev_state_timeout) {
-  	  	            	  ev = ev_none;
-  	  	                  st = s_car_ready;
-  	  	                  set_traffic_lights(st);
-  	  	                  //HAL_Delay(1000);
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 2000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_car_ready:
-  	  	        	  //110 10
-  	  	              if (ev == ev_state_timeout) {
-  	  	            	  ev = ev_none;
-  	  	                  st = s_car_start;
-  	  	                  set_traffic_lights(st);
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 1000;
-  	  	              }
-  	  	              break;
-
-  	  	          case s_car_start:
-  	  	        	  //110 10
-  	  	              if (ev == ev_state_timeout) {
-  	  	            	  ev = ev_none;
-  	  	                  st = s_car_go;
-  	  	                  set_traffic_lights(st);
-  	  	                  last_tick = HAL_GetTick();
-  	  	                  ticks_left_in_state = 2000;
-
-  	  	              }
-  	  	              break;
-
-  	  	          default:
-  	  	              // Fallback tillstånd
-  	  	              break;
-  	  	      }
-
-  	  	update_tick(&last_tick, &ticks_left_in_state, &timeout_handled);
-
-		  if(timeout_handled == 1 && (st != s_init && st != s_car_go))
-		  {
-			ev = ev_state_timeout;
-			timeout_handled = 0;
-		  }else{
-			ev = ev_none;
-		  }
-
 
       /* USER CODE BEGIN 3 */
     }
