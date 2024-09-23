@@ -148,47 +148,7 @@ void button_mode()
 	}
 
 
-		//------------------------------
-		/*uint32_t current_tick = HAL_GetTick();
 
-		        // Check the b1 button (on board, active low)
-		        b1_pressed = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0));
-
-		        // If the button is pressed, show the bounce count
-		        if (b1_pressed)
-		        {
-		            qs_put_big_num(button_exti_count);  // Show the bounce count while button is pressed
-		        }
-		        else
-		        {
-		            // When the button is released, show the debounced count
-		            qs_put_big_num(button_debounced_count);
-		        }
-
-		        // Check if there is an unhandled EXTI
-		        if (unhandled_exti && (last_flank_causing_exti != last_managed_exti))
-		        {
-		            // Check if the bounce delay has passed since the last flank causing the EXTI
-		            if (current_tick - last_flank_causing_exti >= 50)
-		            {
-		                // Read the current button state
-		                pressed = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0));
-
-		                // If the button is pressed and it hasn't been debounced yet
-		                if (pressed)
-		                {
-		                    button_debounced_count++;  // Increment debounced count only when pressed
-		                }
-
-		                // Mark this flank as handled
-		                last_managed_exti = last_flank_causing_exti;
-		            }
-
-		            // Reset the unhandled EXTI flag
-		            unhandled_exti = 0;
-		        }
-
-	}*/
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
