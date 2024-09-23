@@ -80,7 +80,7 @@ static void MX_TIM9_Init(void);
 /* USER CODE BEGIN 0 */
 
 void uart_print_menu(){
-	  char str[100];
+	  char str[75];
 
 	sprintf(str,"Choose an option: \r\n"
 			"Enter 1 for Clock mode.\r\n"
@@ -139,10 +139,9 @@ void button_mode()
 		button_debounced_count = button_exti_count;
 		}*/
 
-		//-------------------
 		uint32_t current_tick = HAL_GetTick();
 
-		b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0); // check b1 button (on board, active low)
+		b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13); // check b1 button (on board, active low)
 		qs_put_big_num(b1_pressed ? button_exti_count : button_debounced_count);
 
 
@@ -170,7 +169,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (GPIO_Pin == GPIO_PIN_0) {
 
 	last_flank_causing_exti = HAL_GetTick();
-	unhandled_exti = 1; //sätter flagga till 1 för att flagga unhandled_exit
+	unhandled_exti = 1; //sätter till 1 för att flagga unhandled_exit
 	button_exti_count++;
 	}
 }
