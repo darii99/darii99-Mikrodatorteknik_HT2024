@@ -43,20 +43,24 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart2;
-uint16_t button_exti_count;
-uint16_t button_debounced_count;
+
 
 /* USER CODE BEGIN PV */
 
 uint16_t unhandled_exti;
 uint32_t last_flank_causing_exti;
+int b1_pressed;
+int pressed;
+uint32_t last_managed_exti = 0;
+uint32_t last_flank_causing_exti = 0;
+uint32_t button_exti_count = 0;
+uint32_t button_debounced_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -102,38 +106,99 @@ void clock_mode()
 void button_mode()
 {
 /*** init segment ***/
-	int b1_pressed;
-	int pressed;
+
+
+
+
 /*** main loop ***/
 	while (1)
 	{
 		/* deal with debouncing the button... */
-		if (1) // For initial testing
+		/*if (1) // For initial testing
 		{
 		button_debounced_count = button_exti_count;
-		}
-		// check b1 button (on board, active low)
-		b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
+		}*/
+
+		//-------------------
+		uint32_t current_tick = HAL_GetTick();
+
+		b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0); // check b1 button (on board, active low)
 		qs_put_big_num(b1_pressed ? button_exti_count : button_debounced_count);
 
-		if (unhandled_exti) // was set in interrupt
-		{
-		HAL_Delay(20); // value measured by probing
-		pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
 
-		if (pressed)
+		if (unhandled_exti && (last_flank_causing_exti != last_managed_exti)) // was set in interrupt
 		{
-		button_debounced_count++;
-		}
+			if(current_tick - last_flank_causing_exti >= 50) {
+
+
+				pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
+
+		//HAL_Delay(50); // value measured by probing
+		//pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
+
+				if (pressed) {
+					button_debounced_count++;
+				}
+
+				last_managed_exti = last_flank_causing_exti;
+			}
+
 		unhandled_exti = 0;
 		}
 	}
+
+
+		//------------------------------
+		/*uint32_t current_tick = HAL_GetTick();
+
+		        // Check the b1 button (on board, active low)
+		        b1_pressed = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0));
+
+		        // If the button is pressed, show the bounce count
+		        if (b1_pressed)
+		        {
+		            qs_put_big_num(button_exti_count);  // Show the bounce count while button is pressed
+		        }
+		        else
+		        {
+		            // When the button is released, show the debounced count
+		            qs_put_big_num(button_debounced_count);
+		        }
+
+		        // Check if there is an unhandled EXTI
+		        if (unhandled_exti && (last_flank_causing_exti != last_managed_exti))
+		        {
+		            // Check if the bounce delay has passed since the last flank causing the EXTI
+		            if (current_tick - last_flank_causing_exti >= 50)
+		            {
+		                // Read the current button state
+		                pressed = (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0));
+
+		                // If the button is pressed and it hasn't been debounced yet
+		                if (pressed)
+		                {
+		                    button_debounced_count++;  // Increment debounced count only when pressed
+		                }
+
+		                // Mark this flank as handled
+		                last_managed_exti = last_flank_causing_exti;
+		            }
+
+		            // Reset the unhandled EXTI flag
+		            unhandled_exti = 0;
+		        }
+
+	}*/
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+
+	if (GPIO_Pin == GPIO_PIN_0) {
+
+	last_flank_causing_exti = HAL_GetTick();
+	unhandled_exti = 1; //sätter flagga till 1 för att flagga unhandled_exit
 	button_exti_count++;
-	//last_flank_causing_exti = HAL_GetTick();
-	//unhandled_exti = 1; //sätter flagga till 1 för att flagga unhandled_exit
+	}
 }
 
 /* USER CODE END 0 */
@@ -321,11 +386,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SEG_CLK_Pin|SEG_DIO_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : Button_Pin */
-  GPIO_InitStruct.Pin = Button_Pin;
+  /*Configure GPIO pins : PC13 Button_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|Button_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Button_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
