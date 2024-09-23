@@ -42,8 +42,9 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart2;
+TIM_HandleTypeDef htim9;
 
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -55,12 +56,22 @@ uint32_t last_managed_exti = 0;
 uint32_t last_flank_causing_exti = 0;
 uint32_t button_exti_count = 0;
 uint32_t button_debounced_count = 0;
+
+uint8_t secondsOnes = 0;
+uint8_t secondsTens = 4;
+uint8_t minutesOnes = 9;
+uint8_t minutesTens = 5;
+uint8_t hoursOnes = 3;
+uint8_t hoursTens = 2;
+uint8_t colonFlicker = 0;
+int freq_counter = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -90,25 +101,34 @@ int uart_get_menu_choice()
  }
 
 void uart_print_bad_choice() {
-		printf("Invalid input. Try again. Choose 1 or 2.\r\n");
-
+		char str[50];
+		sprintf(str, "Invalid input. Try again. Choose 1 or 2.\r\n\n");
+		HAL_UART_Transmit(&huart2, (uint8_t *) str, strlen(str), HAL_MAX_DELAY);
 }
 
 void clock_mode()
 {
 /*** init segment ***/
+	HAL_TIM_Base_Start_IT(&htim9);
+
 /*** main loop ***/
 	while (1)
 	{
+		b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+
+		if (b1_pressed) {
+			qs_put_digits(hoursTens, hoursOnes, minutesTens, minutesOnes, colonFlicker);
+		}
+		else {
+			qs_put_digits(minutesTens, minutesOnes, secondsTens, secondsOnes, colonFlicker);
+		}
+
 	}
 }
 
 void button_mode()
 {
 /*** init segment ***/
-
-
-
 
 /*** main loop ***/
 	while (1)
@@ -133,9 +153,6 @@ void button_mode()
 
 				pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
 
-		//HAL_Delay(50); // value measured by probing
-		//pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
-
 				if (pressed) {
 					button_debounced_count++;
 				}
@@ -146,9 +163,6 @@ void button_mode()
 		unhandled_exti = 0;
 		}
 	}
-
-
-
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -160,6 +174,43 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	button_exti_count++;
 	}
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	freq_counter++;
+	colonFlicker = 1;
+
+	if (freq_counter >= 2){
+		freq_counter = 0;
+		colonFlicker = 0;
+		secondsOnes++;
+	}
+	if (secondsOnes > 9){
+		secondsOnes = 0;
+		secondsTens++;
+	}
+	if (secondsTens > 5){
+		secondsTens = 0;
+		minutesOnes++;
+	}
+	if (minutesOnes > 9){
+		minutesOnes = 0;
+		minutesTens++;
+	}
+	if (minutesTens > 5){
+		minutesTens = 0;
+		hoursOnes++;
+	}
+	if(hoursOnes > 9){
+		hoursOnes = 0;
+		hoursTens++;
+	}
+	if((hoursOnes == 4) & (hoursTens == 2)){
+		hoursOnes = 0;
+		hoursTens = 0;
+	}
+
+}
+
 
 /* USER CODE END 0 */
 
@@ -193,6 +244,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -288,6 +340,44 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 1000;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 41999;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
+
 }
 
 /**
