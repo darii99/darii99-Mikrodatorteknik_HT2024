@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,6 +41,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart2;
@@ -48,7 +51,11 @@ UART_HandleTypeDef huart2;
 uint8_t	hrs;
 uint8_t	min;
 uint8_t	sec;
-uint16_t unhandled_exti;
+uint16_t unhandled_exti = 0;
+TextLCDType lcd;
+
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,17 +63,9 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM9_Init(void);
-
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-//void cd_set(struct clock_data * pcd,
-//			uint8_t				hrs,
-//			uint8_t				min,
-//			uint8_t				sec);
-//
-//void cd_tick(struct clock_data * pcd);
-//
-//void uart_print_cd(UART_HandleTypeDef * huart,
-//					struct clock_data * pcd);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -87,22 +86,14 @@ void cd_set(struct clock_data * pcd,
 	pcd->sec = sec;
 }
 
-void uart_print_cd(UART_HandleTypeDef * huart,
-					struct clock_data * pcd)
-{
-	uint16_t str_len;
-	char str[41] = { '\0'};
-	str_len = sprintf(str, "%02d:%02d:%02d \r", pcd->hrs, pcd->min, pcd->sec);
-	HAL_UART_Transmit(&huart2, (uint8_t *)&str, str_len, HAL_MAX_DELAY);
-}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	unhandled_exti;
+	unhandled_exti = 1;
 }
 
 void cd_tick(struct clock_data * pcd){
 
-	pcd->sec++;
+	pcd->sec++; //incrementerar sekunderna
 
 	if (pcd->sec > 59){
 		pcd->sec = 0;
@@ -114,6 +105,31 @@ void cd_tick(struct clock_data * pcd){
 	}
 	if (pcd->hrs > 23){
 		pcd->hrs = 0;
+	}
+
+}
+
+void uart_print_cd(UART_HandleTypeDef * huart,
+					struct clock_data * pcd)
+{
+	uint16_t str_len;
+	char str[41] = { '\0'};
+
+	str_len = sprintf(str, "%02d:%02d:%02d \r", pcd->hrs, pcd->min, pcd->sec);
+	HAL_UART_Transmit(&huart2, (uint8_t *)&str, str_len, HAL_MAX_DELAY);
+}
+
+void wait_for_button_press() {
+	int b1_pressed;
+
+	while(!(b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)))
+	{
+		//do nothing
+	}
+
+	while((b1_pressed = GPIO_PIN_RESET == HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)))
+	{
+		//do nothing
 	}
 
 }
@@ -152,7 +168,20 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM9_Init();
+  MX_I2C1_Init();
+
   /* USER CODE BEGIN 2 */
+  struct clock_data my_clock; //reserves the memory needed
+  cd_set(&my_clock, 23, 59, 45);
+
+
+  TextLCD_Init(&lcd, &hi2c1, 0x4E);
+  HAL_TIM_Base_Start_IT(&htim9);
+
+
+  for(char c = 'A'; c <= 'Z'; c++)
+	  TextLCD_PutChar(&lcd, c);
+
 
   /* USER CODE END 2 */
 
@@ -161,13 +190,23 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
-	  uart_print_cd;
 
-	  struct clock_data my_clock; //reserves the memory needed
+	  if(unhandled_exti) {
+		  unhandled_exti = 0;
+		  cd_tick(&my_clock);
+		  uart_print_cd(&huart2, &my_clock);
+	  }
 
-	  cd_set(&my_clock, 23, 59, 45);
+	  for (int i = 0; i < 5; i++)
+	  		{
+	  		wait_for_button_press();
+	  		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  		}
+
   }
+
 
   /* USER CODE END 3 */
 }
@@ -219,6 +258,40 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
   * @brief TIM9 Initialization Function
   * @param None
   * @retval None
@@ -236,9 +309,9 @@ static void MX_TIM9_Init(void)
 
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 2000;
+  htim9.Init.Prescaler = 1999;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim9.Init.Period = 42000;
+  htim9.Init.Period = 41999;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
