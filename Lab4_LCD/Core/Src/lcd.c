@@ -12,12 +12,19 @@
 void My_Delay(uint32_t mysec)
 {
 	//HAL_Delay( 1 + (mysec / 1000) );
-	uint16_t cr1 = TIM2->CR1;
-	cr1 		 = cr1 | (0x0001 << 0);
-	TIM2->CR1	 = cr1;
+	TIM2->CR1 &= ~(1 << 0);
+	TIM2->CNT = 0;
+	TIM2->CR1 |= (1 << 0);
 	while (TIM2->CNT < mysec) {
-			//do nothing
-		}
+		//wait
+	}
+
+//	uint16_t cr1 = TIM2->CR1;
+//	cr1 		 = cr1 | (0x0001 << 0);
+//	TIM2->CR1	 = cr1;
+//	while (TIM2->CNT < mysec) {
+//			//do nothing
+//		}
 }
 
 #define BIT_BT   0x08
