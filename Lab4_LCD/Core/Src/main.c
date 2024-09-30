@@ -43,6 +43,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart2;
@@ -53,6 +54,7 @@ uint8_t	min;
 uint8_t	sec;
 uint16_t unhandled_exti = 0;
 TextLCDType lcd;
+char time_str[41] = {'\0'};
 
 
 
@@ -64,6 +66,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM9_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -134,6 +137,12 @@ void wait_for_button_press() {
 
 }
 
+void convert_time_to_str(struct clock_data * pcd)
+{
+	//char time_str[50] = {'\0'};
+	uint16_t str_len;
+	str_len = sprintf(time_str, "%02d:%02d:%02d", pcd->hrs, pcd->min, pcd->sec);
+}
 
 /* USER CODE END 0 */
 
@@ -169,7 +178,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM9_Init();
   MX_I2C1_Init();
-
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   struct clock_data my_clock; //reserves the memory needed
   cd_set(&my_clock, 23, 59, 45);
@@ -178,32 +187,53 @@ int main(void)
   TextLCD_Init(&lcd, &hi2c1, 0x4E);
   HAL_TIM_Base_Start_IT(&htim9);
 
+  /*
+  char c = 0;
+  const char ASCII_CAPITAL_OFFSET = 'A';
+  const char LETTERS_TOTAL = 'Z' - 'A';
+  */
 
-  for(char c = 'A'; c <= 'Z'; c++)
-	  TextLCD_PutChar(&lcd, c);
+
+
+  /*for(char c = 'A'; c <= 'Z'; c++)
+	  TextLCD_PutChar(&lcd, c);*/
 
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  TextLCD_Position(&lcd, 8, 1);
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+	  convert_time_to_str(&my_clock);
 	  if(unhandled_exti) {
+		  TextLCD_PutStr(&lcd, time_str);
 		  unhandled_exti = 0;
 		  cd_tick(&my_clock);
+		  TextLCD_Position(&lcd, 8, 1);
 		  uart_print_cd(&huart2, &my_clock);
+
+
 	  }
 
+	  /*
+	  wait_for_button_press();
+	  TextLCD_PutChar(&lcd, c + ASCII_CAPITAL_OFFSET);
+	  c = (c+1) % LETTERS_TOTAL;
+	   */
+
+	  /*
 	  for (int i = 0; i < 5; i++)
 	  		{
 	  		wait_for_button_press();
 	  		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  		}
+	  */
+
 
   }
 
@@ -288,6 +318,51 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 82;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
 
 }
 
